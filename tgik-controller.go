@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/jbeda/tgik-controller/version"
+	"github.com/danielfrg/tgik-controller/version"
 
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -16,7 +16,7 @@ import (
 )
 
 func main() {
-	log.Printf("tgik-controller version %s", version.VERSION)
+	log.Printf("tgsik-controller version %s", version.VERSION)
 
 	kubeconfig := ""
 	flag.StringVar(&kubeconfig, "kubeconfig", kubeconfig, "kubeconfig file")
@@ -40,7 +40,7 @@ func main() {
 	client := kubernetes.NewForConfigOrDie(config)
 
 	sharedInformers := informers.NewSharedInformerFactory(client, 10*time.Minute)
-	tgikController := NewTGIKController(client, sharedInformers.Core().V1().Secrets(), sharedInformers.Core().V1().Namespaces())
+	tgikController := NewTGIKController(client, sharedInformers.Core().V1().Pods(), sharedInformers.Core().V1().Secrets(), sharedInformers.Core().V1().Namespaces())
 
 	sharedInformers.Start(nil)
 	tgikController.Run(nil)

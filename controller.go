@@ -19,6 +19,8 @@ import (
 	apicorev1 "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
+
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
 
 const (
@@ -45,6 +47,7 @@ type TGIKController struct {
 }
 
 func NewTGIKController(client *kubernetes.Clientset,
+	podInformer informercorev1.PodInformer,
 	secretInformer informercorev1.SecretInformer,
 	namespaceInformer informercorev1.NamespaceInformer) *TGIKController {
 	c := &TGIKController{
@@ -56,6 +59,20 @@ func NewTGIKController(client *kubernetes.Clientset,
 		namespaceListerSynced: namespaceInformer.Informer().HasSynced,
 		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "secretsync"),
 	}
+
+	podInformer.Informer().AddEventHandler(
+		cache.ResourceEventHandlerFuncs{
+			AddFunc: func(obj interface{}) {
+				c.onAdd(obj)
+			},
+			UpdateFunc: func(oldObj, newObj interface{}) {
+				c.onUpdate(oldObj, newObj)
+			},
+			DeleteFunc: func(obj interface{}) {
+				c.onDelete(obj)
+			},
+		},
+	)
 
 	// TODO: only schedule sync if it is a secret that has or had our
 	// annotation.
@@ -95,6 +112,32 @@ func NewTGIKController(client *kubernetes.Clientset,
 		},
 	)
 	return c
+}
+
+func (c *TGIKController) onAdd(obj interface{}) {
+	key, err := cache.MetaNamespaceKeyFunc(obj)
+	if err != nil {
+		log.Printf("onAdd: error getting key for %#v: %v", obj, err)
+		runtime.HandleError(err)
+	}
+	log.Printf("onAdd: %v", key)
+}
+
+func (c *TGIKController) onUpdate(oldObj, _ interface{}) {
+	key, err := cache.MetaNamespaceKeyFunc(oldObj)
+	if err != nil {
+		log.Printf("onUpdate: error getting key for %#v: %v", oldObj, err)
+		runtime.HandleError(err)
+	}
+	log.Printf("onUpdate: %v", key)
+}
+
+func (c *TGIKController) onDelete(obj interface{}) {
+	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
+	if err != nil {
+		runtime.HandleError(err)
+	}
+	log.Printf("onDelete: %v", key)
 }
 
 func (c *TGIKController) Run(stop <-chan struct{}) {
