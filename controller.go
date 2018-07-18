@@ -36,6 +36,9 @@ var namespaceBlacklist = map[string]bool{
 }
 
 type TGIKController struct {
+	podGetter             corev1.PodsGetter
+	podLister             listercorev1.PodLister
+	podListerSynced       cache.InformerSynced
 	secretGetter          corev1.SecretsGetter
 	secretLister          listercorev1.SecretLister
 	secretListerSynced    cache.InformerSynced
@@ -51,6 +54,9 @@ func NewTGIKController(client *kubernetes.Clientset,
 	secretInformer informercorev1.SecretInformer,
 	namespaceInformer informercorev1.NamespaceInformer) *TGIKController {
 	c := &TGIKController{
+		podGetter:             client.CoreV1(),
+		podLister:             podInformer.Lister(),
+		podListerSynced:       podInformer.Informer().HasSynced,
 		secretGetter:          client.CoreV1(),
 		secretLister:          secretInformer.Lister(),
 		secretListerSynced:    secretInformer.Informer().HasSynced,
